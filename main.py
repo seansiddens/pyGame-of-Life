@@ -380,6 +380,6 @@ nextState = next_board_state(initState)
 while True:
     render(nextState) 
     nextState = next_board_state(nextState)
-    time.sleep(.5)
+    time.sleep(.25)
     
 
