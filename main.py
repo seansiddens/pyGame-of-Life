@@ -1,22 +1,96 @@
 import random
 import time
+import pygame as py
+
+DEAD = 0
+LIVE = 1
+SCR_DIM = SCR_WIDTH, SCR_HEIGHT = 900, 900
+FRAMERATE = 15
+DEAD_COLOR = py.Color("black")
+LIVE_COLOR = py.Color("white")
+
 
 # Returns a board state with specified width and height where each cell is dead
 def dead_state(w, h):
-    a = [[0] * w for i in range(h)]
-    return a
+    return [[DEAD] * w for i in range(h)]
 
-# Prints the state of a board to terminal in a nice format
-def render(state):
+
+# Returns a board state of specified width and height where the state of each cell is randomly determined
+def random_state(w, h):
+    state = dead_state(w, h)
+    for y in range(state_height(state)):
+        for x in range(state_width(state)):
+            random_number = random.random()
+            if random_number > .6:
+                state[y][x] = LIVE
+            else:
+                state[y][x] = DEAD
+    return state
+
+
+def state_width(state):
+    return len(state[0])
+
+
+def state_height(state):
+    return len(state)
+
+
+def next_cell_value(cell_coords, state):
+    width = state_width(state)
+    height = state_height(state)
+    x = cell_coords[0]
+    y = cell_coords[1]
+    n_live_neighbors = 0
+
+    # Iterate over all of the cell's neighbors
+    for y1 in range((y - 1), (y + 2)):
+        if y1 < 0 or y1 >= height: continue  # Skips neighbors out of range
+        for x1 in range((x - 1), (x + 2)):
+            if x1 < 0 or x1 >= width: continue  # Skips neighbors out of range
+            if x1 == x and y1 == y: continue  # Skips cell count if it is the cell itself
+
+            if state[y1][x1] == LIVE:
+                n_live_neighbors += 1
+
+    # determine cell value depending on the number of alive neighbors
+    if state[y][x] == LIVE:
+        if n_live_neighbors <= 1:
+            return DEAD
+        elif n_live_neighbors <= 3:
+            return LIVE
+        else:
+            return DEAD
+    else:
+        if n_live_neighbors == 3:
+            return LIVE
+        else:
+            return DEAD
+
+
+def next_board_state(init_state):
+    width = state_width(init_state)
+    height = state_height(init_state)
+    next_state = dead_state(width, height)
+
+    for y in range(0, height):
+        for x in range(0, width):
+            next_state[y][x] = next_cell_value((x, y), init_state)
+
+    return next_state
+
+
+# Prints the state of a board to terminal in ascii form
+def ascii_render(state):
     # Draws a partition line above the board
-    for i in range(len(state[0]) * 2):
+    for x in range(state_width(state) * 2):
         print('-', end='')
 
-    # Traverses the board, outputting a * for each alive cell, and a blank space for each dead cell. Properly formats so board is even and equally spaced.
-    for i in range(len(state)):
+    # Traverses the board and renders it to terminal
+    for y in range(state_height(state)):
         print('')
-        for j in range(len(state[i])):
-            if state[i][j] == 1:
+        for x in range(state_width(state)):
+            if state[y][x] == LIVE:
                 print('*', end=' ')
             else:
                 print(' ', end=' ')
@@ -25,361 +99,54 @@ def render(state):
     print('')
 
     # Another partition line below the board
-    for i in range(len(state[0]) * 2):
+    for x in range(state_width(state) * 2):
         print('-', end='')
-    
+
     # New line
     print('')
 
 
-# Returns a board state of specified width and height where the state of each cell is randomly determined
-def random_state(w, h):
-    state = dead_state(w, h)
+# Render the game state using Pygame
+def game_render(state):
+    cell_num = state_width(state), state_height(state)
+    cell_dim = cell_width, cell_height = (SCR_WIDTH // cell_num[0]), (SCR_HEIGHT // cell_num[1])
 
-    for i in range(len(state)):
-        for j in range(len(state[i])):
-            randomNumber = random.random()
-            if randomNumber >= .8:
-                state[i][j] = 1
+    for y in range(0, state_height(state)):
+        for x in range(0, state_width(state)):
+            if state[y][x]:
+                py.draw.rect(screen, LIVE_COLOR, py.Rect((x * cell_width, y * cell_height), cell_dim))
             else:
-                state[i][j] = 0
-    return state
+                py.draw.rect(screen, DEAD_COLOR, py.Rect((x * cell_width, y * cell_height), cell_dim))
 
-'''
-def next_board_state(state):
-
-    nextState = state.copy()
-    for i in range(len(state)):
-        for j in range(len(state[i])):
-            
-            # Counter to keep track of alive neighbors
-            liveCount = 0
-            
-            # Checks if cell is already alive
-            if state[i][j] == 1:
-                aliveCheck = True
-            else:
-                aliveCheck = False
-
-            # Center Cell 
-            if i > 0 and i < (len(state) - 1) and j > 0 and j < (len(state[i]) - 1):
-                for a in range(-1,2):
-                    for b in range(-1,2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Top Left Corner Cell
-            if i == 0 and j == 0:
-                for a in range(0,2):
-                    for b in range(0,2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-                                
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-               
-            # Top Edge Cell
-            if i == 0 and 0 < j < (len(state[i]) - 1):
-                for a in range(0,2):
-                    for b in range(-1,2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Top Right Corner Cell
-            if i == 0 and j == (len(state[i]) - 1):
-                for a in range(0,2):
-                    for b in range(-1,1):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Left Edge Cell
-            if 0 < i < (len(state) - 1) and j == 0:
-                for a in range(-1,2):
-                    for b in range(0,2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Right Edge Cell
-            if 0 < i < (len(state) - 1) and j == (len(state[i]) - 1):
-                for a in range(-1,2):
-                    for b in range(-1,1):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Bottom Left Corner Cell
-            if i == (len(state) - 1) and j == 0:
-                for a in range(-1, 1):
-                    for b in range(0, 2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Bottom Edge Cell
-            if i == (len(state) - 1) and 0 < j < (len(state[i]) - 1):
-                for a in range(-1,1):
-                    for b in range(-1,2):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-
-            # Bottom Right Corner Cell
-            if i == (len(state) - 1) and j == (len(state[i]) - 1):
-                for a in range(-1,1):
-                    for b in range(-1,1):
-                        if a != 0 and b != 0:
-                            if state[i + a][j + b] == 1:
-                                liveCount = liveCount + 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] == 1
-                else:
-                    nextState[i][j] == 0
-    return nextState
- '''
+    py.display.flip()
 
 
-def next_board_state(state):
-    nextState = state.copy()
+def game_loop(init_state):
+    next_state = init_state
+    while True:
+        e = py.event.poll()
+        if e.type == py.QUIT:
+            break
 
-    for i in range(len(state)):
-        for j in range(len(state[i])):
-            # Counter to keep track of alive neighbors
-            liveCount = 0
-            
-            # Checks if cell is already alive
-            if state[i][j] == 1:
-                aliveCheck = True
-            else:
-                aliveCheck = False
+        clock.tick(FRAMERATE)
 
-            # Center Cell 
-            if i > 0 and i < (len(state) - 1) and j > 0 and j < (len(state[i]) - 1):
-                if state[i - 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i - 1][j + 1] == 1:
-                    liveCount += 1
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-                if state[i + 1][j + 1] == 1:
-                    liveCount += 1
-            
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
+        game_render(next_state)
+        next_state = next_board_state(next_state)
 
-            # Top Left Corner Cell
-            if i == 0 and j == 0:
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-                if state[i + 1][j + 1] == 1:
-                    liveCount += 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-                
-
-        
-
-            # Top Edge Cell
-            if i == 0 and 0 < j < (len(state[i]) - 1):
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-                if state[i + 1][j + 1] == 1:
-                    liveCount += 1
-                
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-                
-
-            # Top Right Corner Cell
-            if i == 0 and j == (len(state[i]) - 1):
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-            # Left Edge Cell
-            if i > 0 and i < (len(state) - 1) and j == 0:
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i - 1][j + 1] == 1:
-                    liveCount += 1
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-                if state[i + 1][j + 1] == 1:
-                    liveCount += 1
-
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-            # Right Edge Cell
-            if i > 0 and i < (len(state) - 1) and j == (len(state[i]) - 1):
-                if state[i - 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i + 1][j] == 1:
-                    liveCount += 1
-              
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-            # Bottom Left Corner Cell
-            if i == (len(state) - 1) and j == 0:
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i - 1][j + 1] == 1:
-                    liveCount += 1
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-                
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-            # Bottom Edge Cell
-            if i == (len(state) - 1) and j > 0 and j < (len(state[i]) - 1):
-                if state[i - 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i - 1][j + 1] == 1:
-                    liveCount += 1
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                if state[i][j + 1] == 1:
-                    liveCount += 1
-               
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-            # Bottom Right Corner Cell
-            if i == (len(state) - 1) and j == (len(state[i]) - 1):
-                if state[i - 1][j - 1] == 1:
-                    liveCount += 1
-                if state[i - 1][j] == 1:
-                    liveCount += 1
-                if state[i][j - 1] == 1:
-                    liveCount += 1
-                
-                if is_alive(liveCount, aliveCheck) == True:
-                    nextState[i][j] = 1
-                else:
-                    nextState[i][j] = 0
-
-    return nextState
+    py.quit()
 
 
-def is_alive(liveCount, isAlreadyAlive):
-    # Death by underpopulation
-    if liveCount < 2:
-        return False
-    # Alive - perfect conditions
-    if 2 <= liveCount < 4 and isAlreadyAlive == True:
-        return True
-    # Death by overpopulation
-    if liveCount >= 4:
-        return False
-    # Alive by reproduction
-    if isAlreadyAlive == False and liveCount == 3:
-        return True
+if __name__ == "__main__":
+    py.init()
 
+    screen = py.display.set_mode(SCR_DIM)
+    screen.fill(DEAD_COLOR)
 
+    # set game clock speed based on framerate
+    clock = py.time.Clock()
 
+    init_state = random_state(100, 100)
+    game_loop(init_state)
 
-
-
-initState = random_state(50,50)
-render(initState)
-nextState = next_board_state(initState)
-while True:
-    render(nextState) 
-    nextState = next_board_state(nextState)
-    time.sleep(.25)
-    
+    # p = open("patterns\glider.rle", "r")
 
