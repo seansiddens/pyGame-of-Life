@@ -10,6 +10,31 @@ DEAD_COLOR = py.Color("black")
 LIVE_COLOR = py.Color("white")
 
 
+def load_pattern(pattern_name):
+
+    pattern_file = open(pattern_name, "r")
+
+    for line in pattern_file:
+        if line[0] == '#':
+            continue
+        elif line[0] == 'x':
+            header_line = line
+
+    header_line = header_line.split(',')
+    print(header_line)
+
+    dim = []
+    for i in header_line[0:2]:
+        x = ''
+        for char in i:
+            if char.isdigit():
+                x += char
+
+        dim.append(int(x))
+
+    pattern = [[DEAD] * dim[0] for i in range(dim[1])]
+
+
 # Returns a board state with specified width and height where each cell is dead
 def dead_state(w, h):
     return [[DEAD] * w for i in range(h)]
@@ -137,16 +162,21 @@ def game_loop(init_state):
 
 
 if __name__ == "__main__":
-    py.init()
+    #py.init()
 
-    screen = py.display.set_mode(SCR_DIM)
-    screen.fill(DEAD_COLOR)
+    #screen = py.display.set_mode(SCR_DIM)
+    #screen.fill(DEAD_COLOR)
 
     # set game clock speed based on framerate
-    clock = py.time.Clock()
+    #clock = py.time.Clock()
 
-    init_state = random_state(100, 100)
-    game_loop(init_state)
+    #init_state = random_state(100, 100)
+    #game_loop(init_state)
 
-    # p = open("patterns\glider.rle", "r")
+    load_pattern("patterns\gosperglidergun.rle")
+
+
+
+
+
 
