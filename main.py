@@ -1,28 +1,49 @@
 import random
-import time
 import pygame as py
+from os import listdir
 
 DEAD = 0
 LIVE = 1
 SCR_DIM = SCR_WIDTH, SCR_HEIGHT = 900, 900
-FRAMERATE = 15
+FRAMERATE = 30
 DEAD_COLOR = py.Color("black")
 LIVE_COLOR = py.Color("white")
 
 
+def rle_decode(data):
+    decode = ''
+    count = ''
+    for char in data:
+        if char.isdigit():
+            count += char
+        elif char != '!':
+            if count == '':
+                decode += char * 1
+            else:
+                decode += char * int(count)
+            count = ''
+
+    return decode
+
+
 def load_pattern(pattern_name):
 
-    pattern_file = open(pattern_name, "r")
+    # Reads pattern file line by line and omits newline character
+    with open('patterns/' + pattern_name) as f:
+        pattern_file = f.read().splitlines()
 
+    # Iterates through each line, stores the header line and encoded data, skips over comments
+    encoded_data = ''
     for line in pattern_file:
         if line[0] == '#':
             continue
         elif line[0] == 'x':
             header_line = line
+        else:
+            encoded_data += line
 
+    # Get the x and y dimensions of the pattern from the header line
     header_line = header_line.split(',')
-    print(header_line)
-
     dim = []
     for i in header_line[0:2]:
         x = ''
@@ -32,7 +53,36 @@ def load_pattern(pattern_name):
 
         dim.append(int(x))
 
+    # Creates a blank pattern with proper dimensions
     pattern = [[DEAD] * dim[0] for i in range(dim[1])]
+
+    # Split pattern by line and decode
+    formatted_data = encoded_data.split('$')
+    decoded_data = []
+    for i in range(len(formatted_data)):
+        decoded_data.append(rle_decode(formatted_data[i]))
+
+    # Use data to create pattern
+    # dim = [x, y]
+    for y in range(dim[1]):
+        for x in range(dim[0]):
+            if y >= len(decoded_data):
+                continue
+            if x >= len(decoded_data[y]):
+                continue
+            if decoded_data[y][x] == 'o':
+                pattern[y][x] = LIVE
+
+    game_board = dead_state(100, 100)
+
+    # Put pattern in center of game board
+    # dim = [x, y]
+    for y in range(dim[1]):
+        for x in range(dim[0]):
+            game_board[y + 20][x + 20] = pattern[y][x]
+
+    return game_board
+
 
 
 # Returns a board state with specified width and height where each cell is dead
@@ -116,9 +166,9 @@ def ascii_render(state):
         print('')
         for x in range(state_width(state)):
             if state[y][x] == LIVE:
-                print('*', end=' ')
+                print('O', end=' ')
             else:
-                print(' ', end=' ')
+                print('.', end=' ')
 
     # New line
     print('')
@@ -132,7 +182,7 @@ def ascii_render(state):
 
 
 # Render the game state using Pygame
-def game_render(state):
+def game_render(state, screen):
     cell_num = state_width(state), state_height(state)
     cell_dim = cell_width, cell_height = (SCR_WIDTH // cell_num[0]), (SCR_HEIGHT // cell_num[1])
 
@@ -147,6 +197,10 @@ def game_render(state):
 
 
 def game_loop(init_state):
+    py.init()
+    clock = py.time.Clock()
+    screen = py.display.set_mode(SCR_DIM)
+    screen.fill(DEAD_COLOR)
     next_state = init_state
     while True:
         e = py.event.poll()
@@ -155,25 +209,69 @@ def game_loop(init_state):
 
         clock.tick(FRAMERATE)
 
-        game_render(next_state)
+        game_render(next_state, screen)
         next_state = next_board_state(next_state)
 
     py.quit()
 
 
 if __name__ == "__main__":
-    #py.init()
 
-    #screen = py.display.set_mode(SCR_DIM)
-    #screen.fill(DEAD_COLOR)
+    print("Welcome to the Game of Life!")
+    print("Select an initial game state: ")
+    print("[1] Start with a soup (randomized game state)")
+    print("[2] Start with a pattern")
 
-    # set game clock speed based on framerate
-    #clock = py.time.Clock()
+    choice = False
+    while not choice:
+        choice = input()
+        print(choice)
+        if choice != '1' and choice != '2':
+            print("Please input a valid number: ")
+            choice = False
 
-    #init_state = random_state(100, 100)
+        if choice == 1:
+            game_loop(random_state(100, 100))
+        elif choice == 2:
+            break
+
+    print("Please select a pattern to load:")
+    patterns = listdir('patterns')
+
+    choice = False
+    while not choice:
+        count = 0
+        for file in patterns:
+            count += 1
+            print("[{}]".format(count), file)
+
+        choice = input()
+
+        try:
+            val = int(choice)
+            if (val - 1) not in range(len(patterns)):
+                print("Please input a valid number: ")
+                choice = False
+            else:
+                pattern_name = str(patterns[val-1])
+                init_state = load_pattern(pattern_name)
+                game_loop(init_state)
+        except ValueError:
+            print("Please input a valid number: ")
+            choice = False
+
+    # init_state = random_state(100, 100)
+    # game_loop(init_state)
+
+    #init_state = load_pattern("patterns/glider.rle")
     #game_loop(init_state)
+    # load_pattern("patterns/gosperglidergun.rle")
+    # load_pattern("patterns/figureeight.rle")
+    # load_pattern("patterns/tannersp46.rle")
+    # load_pattern("patterns/pentadecathalon.rle")
 
-    load_pattern("patterns\gosperglidergun.rle")
+
+
 
 
 
