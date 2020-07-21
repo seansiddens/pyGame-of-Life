@@ -5,7 +5,7 @@ from os import listdir
 DEAD = 0
 LIVE = 1
 SCR_DIM = SCR_WIDTH, SCR_HEIGHT = 900, 900
-FRAMERATE = 30
+FRAMERATE = 15
 DEAD_COLOR = py.Color("black")
 LIVE_COLOR = py.Color("white")
 
@@ -72,6 +72,8 @@ def load_pattern(pattern_name):
                 continue
             if decoded_data[y][x] == 'o':
                 pattern[y][x] = LIVE
+
+    ascii_render(pattern)
 
     game_board = dead_state(100, 100)
 
@@ -181,6 +183,14 @@ def ascii_render(state):
     print('')
 
 
+def random_color():
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+    rgb = [r, g, b]
+    return rgb
+
+
 # Render the game state using Pygame
 def game_render(state, screen):
     cell_num = state_width(state), state_height(state)
@@ -189,7 +199,8 @@ def game_render(state, screen):
     for y in range(0, state_height(state)):
         for x in range(0, state_width(state)):
             if state[y][x]:
-                py.draw.rect(screen, LIVE_COLOR, py.Rect((x * cell_width, y * cell_height), cell_dim))
+                rgb = random_color()
+                py.draw.rect(screen, (rgb[0], rgb[1], rgb[2]), py.Rect((x * cell_width, y * cell_height), cell_dim))
             else:
                 py.draw.rect(screen, DEAD_COLOR, py.Rect((x * cell_width, y * cell_height), cell_dim))
 
@@ -230,9 +241,10 @@ if __name__ == "__main__":
             print("Please input a valid number: ")
             choice = False
 
-        if choice == 1:
+        if choice == '1':
             game_loop(random_state(100, 100))
-        elif choice == 2:
+            choice == False
+        elif choice == '2':
             break
 
     print("Please select a pattern to load:")
